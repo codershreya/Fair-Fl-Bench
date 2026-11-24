@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# raw datasets and per-run logs: large, and not ours to redistribute in full
+data/raw/
+results/runs/
+results/logs/
+
+# other teams' original repos, course PDFs, the oracle wrapper, and this project's own
+# process docs: not needed to reproduce the experiment, so not part of this repo at all
+reference/
+
+# leftover ad-hoc transfer artifacts from syncing results during development
+*.tar.gz
+_stage_tmp/
+
+# OS junk
+.DS_Store
+Thumbs.db

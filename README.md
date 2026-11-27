@@ -2,15 +2,15 @@
 
 # ⚖️ Fair-FL Unified Benchmark
 
-**14 Fair Federated Learning algorithms · 5 datasets · one shared protocol · 1,750 experiments**
+**16 Fair Federated Learning algorithms · 5 datasets · one shared protocol · 2,000 experiments**
 
 [![Python 3.10](https://img.shields.io/badge/python-3.10-3776AB?logo=python&logoColor=white)](environment.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Tests: pytest](https://img.shields.io/badge/tests-pytest-0A9EDC?logo=pytest&logoColor=white)](tests/)
-[![Experiments](https://img.shields.io/badge/experiments-1750%20%2F%201750-brightgreen)](results/summary/master_results.csv)
+[![Experiments](https://img.shields.io/badge/experiments-2000%20%2F%202000-brightgreen)](results/summary/master_results.csv)
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/19dEIPiXVaPy3LRnDN9qxln9bcFiSzSr3?usp=sharing)
 
-<img src="docs/figures/overall_comparison.png" alt="Overall comparison of accuracy, fairness, disparate impact and runtime across the 14 algorithms" width="900">
+<img src="docs/figures/overall_comparison.png" alt="Overall comparison of accuracy, fairness, disparate impact and runtime across the algorithms" width="900">
 
 </div>
 
@@ -18,13 +18,15 @@
 
 ## 📖 Overview
 
-A from-scratch, single-codebase benchmark that re-implements **14 Fair Federated Learning
-algorithm variants** drawn from two independent university course projects, runs them all under
-**one shared client / split / metric protocol**, and reports them side by side on **5 datasets**.
+A from-scratch, single-codebase benchmark that re-implements **16 Fair Federated Learning
+algorithm variants**, runs them all under **one shared client / split / metric protocol**, and
+reports them side by side on **5 datasets**. The algorithms come from three sources: two
+independent university course projects (14 variants) and the published method
+**FedFACT** (Zhang et al., NeurIPS 2025; 2 variants).
 
-- 🧱 **Independent re-implementation.** No code imports from either original project. Every
+- 🧱 **Independent re-implementation.** No code imports from any original project. Every
   algorithm and data-handling rule was re-derived from the source and validated against it before
-  any large-scale run.
+  any large-scale run (for FedFACT, our predictions matched the authors' code bit-for-bit).
 - 📏 **Like-for-like comparison.** Same splits, same client partitions, same metrics and same seeds
   for every algorithm.
 - 🔁 **Reproducible on a laptop.** Plain Python CLI with resumable sweeps, no cluster or scheduler
@@ -34,7 +36,7 @@ algorithm variants** drawn from two independent university course projects, runs
 
 ## ✅ Status
 
-**Complete: 1,750 / 1,750 cells filled.** That's 5 datasets × 14 algorithms × 5 client settings ×
+**Complete: 2,000 / 2,000 cells filled.** That's 5 datasets × 16 algorithms × 5 client settings ×
 5 seeds, with no missing cells. The full table is
 [`results/summary/master_results.csv`](results/summary/master_results.csv).
 
@@ -57,39 +59,48 @@ algorithm variants** drawn from two independent university course projects, runs
 
 ### Summary table
 
-| Algorithm | Accuracy ↑ | Bal. Acc ↑ | SP ↓ | EO ↓ | EOP ↓ | DI (→ 1) | Runtime ↓ |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| GFL | **0.874** | 0.773 | 0.166 | 0.077 | 0.094 | 0.473 | 4.1 h |
-| GFL-GBCFSS-DP | **0.874** | 0.773 | 0.166 | 0.077 | 0.094 | 0.473 | 4.1 h |
-| GFL-GBCFSS-EO | **0.874** | 0.773 | 0.166 | 0.077 | 0.094 | 0.473 | 5.1 h |
-| FedAvg-P1 | 0.869 | 0.758 | 0.157 | 0.073 | 0.091 | 0.477 | 5.1 min |
-| FedAvg-P2 | 0.869 | 0.755 | 0.156 | 0.074 | 0.095 | 0.474 | 5.2 min |
-| GIFAIR-FL | 0.867 | 0.740 | 0.149 | 0.071 | 0.091 | 0.472 | **4.6 min** |
-| FairTrade-SP | 0.864 | 0.746 | 0.125 | 0.062 | 0.090 | 0.538 | 6.2 min |
-| FairTrade-ATE | 0.863 | 0.706 | 0.133 | **0.045** | **0.046** | 0.576 | 6.5 min |
-| GlobalGroup-SP | 0.860 | 0.728 | 0.141 | 0.067 | 0.088 | 0.494 | 19.5 min |
-| GlobalGroup-EO | 0.859 | 0.742 | 0.147 | 0.069 | 0.087 | 0.508 | 19.3 min |
-| TrustFed-SP | 0.852 | **0.787** | 0.167 | 0.074 | 0.076 | 0.535 | 7.9 min |
-| TrustFed-EO | 0.851 | 0.784 | 0.160 | 0.063 | 0.061 | 0.553 | 9.6 min |
-| FedMinMax | 0.769 | 0.558 | **0.090** | 0.051 | 0.058 | **1.010** | 6.0 min |
-| EOFedMinMax | 0.765 | 0.723 | 0.121 | 0.063 | 0.064 | 0.752 | 5.8 min |
+| Algorithm | Accuracy ↑ | Bal. Acc ↑ | SP ↓ | EO ↓ | EOP ↓ | DI (→ 1) | \|1 − DI\| ↓ | Runtime ↓ |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| GFL | **0.874** | 0.773 | 0.166 | 0.077 | 0.094 | 0.473 | 0.527 | 4.1 h |
+| GFL-GBCFSS-DP | **0.874** | 0.773 | 0.166 | 0.077 | 0.094 | 0.473 | 0.527 | 4.1 h |
+| GFL-GBCFSS-EO | **0.874** | 0.773 | 0.166 | 0.077 | 0.094 | 0.473 | 0.527 | 5.1 h |
+| FedAvg-P1 | 0.869 | 0.758 | 0.157 | 0.073 | 0.091 | 0.477 | 0.523 | 5.1 min |
+| FedAvg-P2 | 0.869 | 0.755 | 0.156 | 0.074 | 0.095 | 0.474 | 0.526 | 5.2 min |
+| GIFAIR-FL | 0.867 | 0.740 | 0.149 | 0.071 | 0.091 | 0.472 | 0.528 | 4.6 min |
+| FairTrade-SP | 0.864 | 0.746 | 0.125 | 0.062 | 0.090 | 0.538 | 0.462 | 6.2 min |
+| FairTrade-ATE | 0.863 | 0.706 | 0.133 | **0.045** | **0.046** | 0.576 | 0.424 | 6.5 min |
+| GlobalGroup-SP | 0.860 | 0.728 | 0.141 | 0.067 | 0.088 | 0.494 | 0.506 | 19.5 min |
+| GlobalGroup-EO | 0.859 | 0.742 | 0.147 | 0.069 | 0.087 | 0.508 | 0.492 | 19.3 min |
+| TrustFed-SP | 0.852 | **0.787** | 0.167 | 0.074 | 0.076 | 0.535 | 0.465 | 7.9 min |
+| TrustFed-EO | 0.851 | 0.784 | 0.160 | 0.063 | 0.061 | 0.553 | 0.447 | 9.6 min |
+| FedFACT-Post | 0.835 | 0.696 | **0.018** | 0.109 | 0.142 | 0.824 | 0.196 | **1.9 min** |
+| FedFACT-In | 0.817 | 0.657 | 0.022 | 0.116 | 0.170 | 1.004 | **0.150** | 11.7 min |
+| FedMinMax | 0.769 | 0.558 | 0.090 | 0.051 | 0.058 | 1.010 | 0.537 | 6.0 min |
+| EOFedMinMax | 0.765 | 0.723 | 0.121 | 0.063 | 0.064 | 0.752 | 0.266 | 5.8 min |
 
 <sub>SP = |statistical parity difference|, EO = equalized odds, EOP = equal opportunity,
-DI = disparate impact (ideal = 1; `NaN` runs skipped). Runtime is mean wall-clock per run on the
-cluster nodes used for the sweep. **Bold** = best in column.</sub>
+DI = disparate impact (ideal = 1; `NaN` runs skipped). |1 − DI| is the distance from the ideal,
+averaged per run: use it to rank DI, because a plain DI mean lets runs above 1 and below 1 cancel
+out (FedMinMax's DI of 1.010 is such an average of runs between 0.05 and 2.8). Runtime is mean
+wall-clock per run on the cluster nodes used for the sweep. **Bold** = best in column.</sub>
 
 ### 💡 Key takeaways
 
-1. **No single algorithm wins on every fairness metric.** FedMinMax is best on SP and DI;
-   FairTrade-ATE is best on EO and EOP.
-2. **High accuracy does not mean fair.** The GFL family has the highest accuracy (~0.87) but
+1. **No single algorithm wins on every fairness metric.** FedFACT-Post and FedFACT-In have by far
+   the smallest SP gap (~0.02) and the DI closest to 1; FairTrade-ATE is best on EO and EOP.
+2. **Fixing one fairness metric can worsen another.** Both FedFACT variants target statistical
+   parity only. When the two groups have different base rates, equal selection rates force their
+   true- and false-positive rates apart, so their EO and EOP are the highest of all methods
+   (strongest on Adult and CaC).
+3. **High accuracy does not mean fair.** The GFL family has the highest accuracy (~0.87) but
    some of the largest fairness gaps.
-3. **FedMinMax trades accuracy for fairness.** It has the lowest SP and the DI closest to 1, but
-   also the lowest balanced accuracy (0.56).
-4. **FairTrade-ATE is a good balance.** It keeps accuracy at 0.86 while having the smallest EO
+4. **FedMinMax trades accuracy for fairness, and its DI is misleading.** It has the lowest
+   balanced accuracy (0.56); its average DI looks ideal only because its runs swing far above
+   and below 1.
+5. **FairTrade-ATE is a good balance.** It keeps accuracy at 0.86 while having the smallest EO
    and EOP gaps.
-5. **Cost varies by ~60×.** The GFL family averages 4–5 h per run, while most other methods
-   finish in under 10 min.
+6. **Cost varies by more than 100×.** The GFL family averages 4–5 h per run, while FedFACT-Post
+   finishes in about 2 min and most other methods in under 20 min.
 
 ### Fairness across algorithms
 
@@ -124,7 +135,7 @@ there (0.57 / 0.64).
 <p align="center"><img src="docs/figures/fpr_by_group.png" alt="FPR for group A1 and A0 per algorithm" width="850"></p>
 
 **IID vs. attribute-based partitioning** and **number of clients K**: averaged over all
-algorithms, neither changes accuracy much (≈ 0.85 accuracy, ≈ 0.74 balanced accuracy in every case).
+algorithms, neither changes accuracy much (≈ 0.85 accuracy, ≈ 0.73 balanced accuracy in every case).
 
 <p align="center">
   <img src="docs/figures/iid_vs_attr.png" alt="Accuracy for IID vs attribute-based partitioning" width="420">
@@ -141,12 +152,18 @@ algorithms, neither changes accuracy much (≈ 0.85 accuracy, ≈ 0.74 balanced 
 |---|---|
 | **Paper 1** (Arnous, Schrader, Olschewski) | `FedAvg-P1` · `FedMinMax` · `EOFedMinMax` · `GlobalGroup-SP` · `GlobalGroup-EO` · `TrustFed-SP` · `TrustFed-EO` |
 | **Paper 2** (Thern, Rehn) | `FedAvg-P2` · `GIFAIR-FL` · `FairTrade-SP` · `FairTrade-ATE`\* · `GFL` · `GFL-GBCFSS-EO` · `GFL-GBCFSS-DP` |
+| **FedFACT** (Zhang et al., NeurIPS 2025, [code](https://github.com/liizhang/FedFACT)) | `FedFACT-In` · `FedFACT-Post`\*\* |
 
-<sub>\* `FairTrade-ATE` is an extra variant added by this benchmark and is not in the original project.</sub>
+<sub>\* `FairTrade-ATE` is an extra variant added by this benchmark and is not in the original project.<br>
+\*\* `FedFACT-Post` calibrates its decision rule on the validation split, and that rule uses the
+sensitive attribute A at prediction time. All other methods predict from X only. Both FedFACT
+variants are evaluated on the pooled test set like every other method; see
+[`DEVIATIONS.md`](DEVIATIONS.md) D13–D16 for the exact protocol.</sub>
 
-The two original repositories are classmates' own coursework and are not included here. They are
-cited only as the provenance of each algorithm; [`DEVIATIONS.md`](DEVIATIONS.md) names the exact
-file and function each implementation was derived from.
+The two student repositories are classmates' own coursework and are not included here, and
+FedFACT's released code is not included either. They are cited only as the provenance of each
+algorithm; [`DEVIATIONS.md`](DEVIATIONS.md) names the exact file and function each implementation
+was derived from.
 
 ## 🗂️ Datasets
 
@@ -161,7 +178,7 @@ flowchart LR
     A[data/raw/*.csv] --> B[Load & preprocess<br/>fit on TRAIN only]
     B --> C[Train / val / test split]
     C --> D[Partition clients<br/>IID or attribute-based]
-    D --> E[Federated training<br/>14 algorithms]
+    D --> E[Federated training<br/>16 algorithms]
     E --> F[Metrics<br/>accuracy + fairness]
     F --> G[results/runs/*.json]
     G --> H[merge_results.py]
@@ -187,7 +204,7 @@ scripts/
 tests/                 pytest suite (metrics, partitioning, no-leakage, merge, per-phase)
 results/
   runs/                  one JSON per experiment (gitignored: regenerate by re-running)
-  summary/master_results.csv   the full 1,750-row flattened table (tracked)
+  summary/master_results.csv   the full 2,000-row flattened table (tracked)
 docs/figures/          charts used in this README (from the Colab analysis notebook)
 environment.yml        conda/micromamba environment spec
 DEVIATIONS.md          every deviation from the original code / harmonisation choice, with evidence
@@ -242,23 +259,37 @@ python3 -m pytest tests/ -v
 ```bash
 python3 scripts/run_benchmark.py run \
   --dataset adult --algo FedAvg-P1 --dist iid --k 3 --seed 0
+
+# same, for the two FedFACT variants
+python3 scripts/run_benchmark.py run --dataset adult --algo FedFACT-In   --dist iid --k 3 --seed 0
+python3 scripts/run_benchmark.py run --dataset adult --algo FedFACT-Post --dist iid --k 3 --seed 0
 ```
 
 `run_benchmark.py run --help` lists every option. `--dataset` and `--algo` accept any of the 5
-datasets and 14 algorithms, `--dist` is `iid` or `attr`, and `--k` is the client count.
+datasets and 16 algorithms, `--dist` is `iid` or `attr`, and `--k` is the client count.
 
 ### Reproduce the full benchmark (or any slice of it)
 
 ```bash
 python3 scripts/run_benchmark.py sweep \
   --datasets adult,bank,cac,kdd,acs \
-  --algos FedAvg-P1,FedMinMax,EOFedMinMax,GlobalGroup-SP,GlobalGroup-EO,TrustFed-SP,TrustFed-EO,FedAvg-P2,GIFAIR-FL,FairTrade-SP,FairTrade-ATE,GFL,GFL-GBCFSS-EO,GFL-GBCFSS-DP \
+  --algos FedAvg-P1,FedMinMax,EOFedMinMax,GlobalGroup-SP,GlobalGroup-EO,TrustFed-SP,TrustFed-EO,FedAvg-P2,GIFAIR-FL,FairTrade-SP,FairTrade-ATE,GFL,GFL-GBCFSS-EO,GFL-GBCFSS-DP,FedFACT-In,FedFACT-Post \
   --settings iid10,iid5,iid3,attr5,attr3 \
   --seeds 0,1,2,3,4 \
-  --workers 4
+  --workers 4 \
+  --allow-excluded
 ```
 
-- Every flag defaults to "all", so a bare `sweep` reproduces the entire 1,750-cell grid.
+Only the FedFACT part (250 runs; about 2.5 h on a 12-core cluster node, longer on a laptop):
+
+```bash
+python3 scripts/run_benchmark.py sweep --algos FedFACT-In,FedFACT-Post --workers 4
+```
+
+- Every flag defaults to "all", so a bare `sweep` runs all 16 algorithms. Without
+  `--allow-excluded` it skips the 75 ACS × GFL-family cells (1,925 cells); with it, you get the
+  full 2,000-cell grid. Those 75 cells are by far the slowest (about 13–27 h each), which is why
+  they are opt-in ([`DEVIATIONS.md`](DEVIATIONS.md) D11).
 - ⏳ The full grid took on the order of **weeks** of wall-clock time on a 12-core cluster node for
   the largest dataset, so expect it to take a while on a laptop. Use
   `--datasets` / `--algos` / `--settings` to run a smaller slice, and set `--workers` to your CPU
@@ -295,8 +326,9 @@ This flattens every file in `results/runs/` into `results/summary/master_results
 
 Do not deviate from these without recording it in [`DEVIATIONS.md`](DEVIATIONS.md).
 
-- No code here imports from either original project's repository. Every algorithm and every
-  data-handling rule is independently re-implemented from reading that source.
+- No code here imports from any original project's repository (the two student projects or
+  FedFACT). Every algorithm and every data-handling rule is independently re-implemented from
+  reading that source.
 - The sensitive attribute is removed from the model input `X` by the data loaders themselves.
 - Every data-dependent quantity (medians, encoders, scalers, orientation) is fit on the **TRAIN**
   split only. The test set is never used for any kind of selection.
@@ -305,5 +337,5 @@ Do not deviate from these without recording it in [`DEVIATIONS.md`](DEVIATIONS.m
 ## 📄 License
 
 MIT; see [`LICENSE`](LICENSE). This covers this project's own code only. The datasets keep their
-original licenses and terms, and the two original student repositories cited above are not
-included.
+original licenses and terms. The two original student repositories and FedFACT's released code
+are cited above but not included.

@@ -6,6 +6,7 @@ from fl.algorithms.eofedminmax import EOFedMinMax
 from fl.algorithms.fedavg_p1 import FedAvgP1
 from fl.algorithms.fedavg_p2 import FedAvgP2
 from fl.algorithms.fairtrade import FairTradeATE, FairTradeSP
+from fl.algorithms.fedfact import FedFACTIn, FedFACTPost
 from fl.algorithms.fedminmax import FedMinMax
 from fl.algorithms.gfl import GFL, GFLGBCFSSDP, GFLGBCFSSEO
 from fl.algorithms.gifair import GIFAIRFL
@@ -27,6 +28,8 @@ REGISTRY = {
     "GFL": GFL,
     "GFL-GBCFSS-EO": GFLGBCFSSEO,
     "GFL-GBCFSS-DP": GFLGBCFSSDP,
+    "FedFACT-In": FedFACTIn,
+    "FedFACT-Post": FedFACTPost,
 }
 
 __all__ = ["REGISTRY"]

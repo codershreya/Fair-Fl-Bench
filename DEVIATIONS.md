@@ -204,6 +204,132 @@ remain in the code as the honest historical record of why these cells needed a d
 override to run at all, not because any cell is still actually missing). See `docs/CLUSTER_LOG.md`
 (jobs 127303, 127731, 127880) for the full real numbers.
 
+## Phase 9 (Extension: FedFACT) -- Phase 1 decisions, 2026-11-27
+
+Source read in full before any code was written: the paper (Zhang et al., "FedFACT: A Provable
+Framework for Controllable Group-Fairness Calibration in Federated Learning", NeurIPS 2025,
+arXiv 2506.03777v2; a local copy is kept outside this repository) and the released code
+(`github.com/liizhang/FedFACT`, commit `26e72f74b077820f1d44856d28c20525b49241b9`, 2026-03-15).
+The repository has NO licence file, so -- exactly as for the 14 existing algorithms -- it is used
+only as a read-only reference and as the validation oracle; FedFACT is re-implemented from scratch
+in this codebase and none of its code is copied or redistributed.
+
+### D13 -- FedFACT: scope and evaluation protocol
+* Two new methods: `FedFACT-In` (in-processing, the paper's Algorithm 1) and `FedFACT-Post`
+  (post-processing, Algorithm 2), counted like FairTrade-SP/-ATE (one paper, two variants).
+* Fairness constraint: binary Demographic Parity (`--fairness_constraints DP`), the quantity
+  reported as StP in this benchmark. Constraint levels xi_g = xi_l = 0.01 (paper Section 5.2 and
+  the README's example command). EO is not run (it would be two more methods).
+* Evaluation stays on the single pooled test split used for all other methods ("simple option",
+  agreed 2026-11-27). FedFACT also targets per-client *local* fairness, which this benchmark does
+  not measure for any method; adding it would require re-running all 1,750 existing runs because
+  per-sample predictions were never stored.
+  - `FedFACT-In` is trained with BOTH the global and the local constraint (the paper's default
+    FedFACT_{g&l}), and the shared global model theta is what gets evaluated -- this is also what
+    the released code reports (`Server.test(..., ensemble=False)`); the paper's Algorithm 1 instead
+    returns per-client ensembles averaged over rounds, which have no meaning on a pooled test set.
+  - `FedFACT-Post` uses the paper's global-only variant FedFACT_g (Section 5.2 / Appendix C.1.2):
+    the local dual mu is fixed at 0. For DP, the global part of the calibration matrix depends on
+    the client only through p_{k|a} / p_{a,k} = n / n_a, which does not depend on k, so the
+    post-processed classifier h(x, a) = argmax_j [M(a)^T eta_hat(x)]_j is identical for every
+    client and pooled-test evaluation is exact.
+* Sensitive attribute: still removed from the model input X (D1 holds). FedFACT uses A only to
+  index the calibration matrix -- in the training loss (In) and in the decision rule at
+  prediction time (Post). Post therefore needs A at prediction time; this is inherent to the
+  method (an attribute-aware post-processor), not a change to D1.
+* Validation data for Post: the code calibrates on each client's TRAINING data (`read_data`
+  sets `val_index = train_index`, both = the first 60% of the client's rows). Here Post calibrates
+  lambda on this benchmark's own validation split instead (the TRAIN split is never reused for
+  calibration). Because mu = 0 and the client weights p_hat_k = n_val_k / n_val sum to 1, the
+  federated update (val-count-weighted average of each client's one gradient step from the same
+  lambda) equals one gradient step on the pooled validation objective, so the global validation
+  split is used directly; how it would be divided among clients cannot change the result.
+
+### D14 -- FedFACT: configuration ("native" = the authors' README command + their code defaults)
+Rounds are set to the shared harmonised value; everything else is the released code's default,
+as used by the README's own example (`--algorithm fedfactin --data adult --client 5
+--fairness_constraints DP --global_constraints 0.01`):
+
+| Item | Value | Note |
+|---|---|---|
+| Communication rounds | 50 | HARMONISED_ROUNDS (code default 40; paper range {20,30,50,80}) |
+| Client participation | all clients every round (C = 1.0) | code default `clients_per_round=100` >= K |
+| Model | logistic regression, 2 logits, softmax / cross-entropy | code default `--model logistic --criterion multiclass`; the paper uses logistic regression for Adult and Compas. Used for all 5 datasets here (the paper uses an MLP only for ENEM, which is not in this benchmark) |
+| Local optimiser | Adam, lr 0.008, weight decay 1e-4 | per-client optimiser state persists across rounds (client objects are long-lived in the code) |
+| Local update | R = 40 mini-batch steps per round, batch 1024 | steps, not epochs; the per-client data iterator also persists across rounds |
+| Server aggregation | unweighted mean of client models, then server momentum theta <- 0.05 theta + 0.95 mean | code defaults `simple_average=True`, `beta=0.95` |
+| In: personal model | each client also keeps a personal model phi_k (same architecture, own persistent Adam); per round it takes 40 steps on the calibrated loss first, then the copy of theta takes 40 steps on the same loss | both read from the same per-client batch iterator |
+| In: ensemble weight | w_0 = 0.5, eta_w = 0.3 | used for the dual updates; the evaluated model is theta (D13) |
+| In: duals | lambda_0 = mu_0 = 0.1, dual lr 0.03, bound [0, 10] | |
+| Post: pre-training | 50 rounds of the same local training with plain cross-entropy | the code's `pretrain_round` option is unused |
+| Post: calibration | T = 30 rounds; lambda_0 = 0.01; each round one gradient step of size 5 x 0.03 = 0.15 on lambda, server = val-count-weighted mean, clamp [0, 10]; hard max in the objective (binary branch) | mu fixed at 0 (D13) |
+
+### D15 -- FedFACT: where the released code differs from the paper (this benchmark follows the code)
+As for every other method, the validation target is the released code, so its behaviour is
+reproduced; each difference from the paper is listed here so results can be read correctly.
+* Server momentum (0.95) and an UNWEIGHTED mean of client models; the paper's Algorithm 1 has
+  theta^{t+1} = theta^t + sum_k p_k Delta theta_k (size-weighted, no momentum).
+* Post server step: the code averages each client's locally-stepped lambda; the paper takes a
+  projected gradient step lambda^{t+1} = Pi(lambda^t - eta_d sum_k p_k Delta lambda_k). For one
+  local step from a common lambda these coincide up to the factor 5 on the step size.
+* Dual bound: code default 10; the paper's Table 4 lists 5. Code value used (D14).
+* Softmax temperature: the paper relaxes the max with temperature 0.1; the code's binary branch
+  uses the hard max, and the `--softmax_beta` option is never read. Hard max used.
+* Unused options in the code: `post_lr`, `softmax_beta`, `calibration`, `pretrain_round`.
+* Reported model for In: global theta (code) vs averaged per-client ensembles (paper) -- see D13.
+* Post caches the pre-trained model on disk (`pre_model.pth`) and silently reuses it on the next
+  run with the same data path. Not reproduced: every run here pre-trains its own model, so
+  different seeds/settings never share a model.
+* The code's own fairness reporting is not used: its binary EO is max(|TPR gap|, |FPR gap|)
+  (this benchmark's EO is the mean of the two, D8 / fl/metrics.py), and it reports local DP as the
+  max over clients but local EO as the mean. All FedFACT numbers here come from fl/metrics.py,
+  identical to the other 14 methods.
+
+### D16 -- FedFACT oracle (Phase 2): how the original code is driven
+The oracle adapter (`fairbench/algos/fedfact.py`, next to the other oracle adapters) runs the
+unmodified FedFACT code through its own `Server` / `CGFFedClient` classes. The from-scratch
+implementation (Phases 3-5) must reproduce exactly this, so the plumbing is part of the spec:
+* Data enters as the code's own `Fair_Dataset` objects with the shapes its `read_data` produces
+  (X float32 (n, d); Y and A float32 (n, 1)); the code's own `get_data_info` builds the statistics.
+* NumPy 2.x no longer allows `float()` on a 1-element array, which the code relies on (its count
+  statistics are shape-(1,) arrays). Those arrays are viewed as a tiny ndarray subclass that
+  restores the NumPy-1.x behaviour; values are unchanged. Without this the original code crashes
+  under the benchmark's NumPy 2.5.
+* `Server.train()` is re-written with the same calls in the same order, leaving out only calls
+  that evaluate or log (`test`, `post_test`, tensorboard `Metrics`), plus Post's on-disk model
+  cache (D15). Client selection still re-seeds NumPy with the round index every round, as in the
+  code; with C = 1 that only fixes the order in which clients are processed.
+* Post: the validation split is cut into K contiguous, equal-as-possible shares in row order
+  (`np.array_split`, no randomness), one per client. Predictions on the pooled val/test sets use
+  client 0's calibration matrix (identical for every client in exact arithmetic, D13). Post's
+  decision rule needs A, so the oracle runner passes A to adapters that declare `needs_a`.
+* Post's `last_round` = the classifier after all 30 calibration rounds; its validation-history /
+  `best_val_acc` snapshots are taken after each calibration round. The validation split is also
+  Post's calibration data, so `best_val_acc` is not an independent selection for Post (D12 already
+  makes `last_round` the reported snapshot).
+* All oracle runs use one CPU thread (`OMP_NUM_THREADS=1`), so later bit-for-bit comparisons run
+  under the same BLAS conditions.
+
+**Result (Phase 4, 2026-11-27): FedFACT-In is bit-exact (L1) against the original code.** All 75
+oracle runs (5 datasets x 5 client settings x seeds 0-2, 5 rounds): 150/150 saved states
+(`last_round`, `best_val_acc`) with identical test predictions -- 81,000 test predictions compared,
+0 differ, every metric difference exactly 0. On top of that, 7 longer runs (50 rounds on Adult,
+Bank, KDD, ACS and CaC; 20-30 rounds on two more) compared theta, lambda and every client's mu_k
+and ensemble weight w_k after EVERY round with `torch.equal`: identical throughout, and identical
+final test probabilities. Record: `results/equivalence/fedfact_in_l1_sweep.json`.
+
+**Result (Phase 5, 2026-11-27): FedFACT-Post is bit-exact (L1) against the original code.** All 75
+oracle runs: 150/150 saved states with identical test decisions (81,000 compared, 0 differ, every
+metric difference exactly 0). Five full-length runs (50 pre-training + 30 calibration rounds on
+CaC, Adult, Bank, KDD and ACS) compared theta after every pre-training round, every client's
+validation scores, and lambda after every calibration round with `torch.equal`: identical
+throughout, and identical test decisions. FedFACT-In's full 75-run sweep was re-run after its
+calibration-matrix code was moved into a function shared with Post: still 75/75 L1.
+One more code detail found while building Post and reproduced as-is: the post-processing client's
+calibration matrix does NOT get the "positive calibration" constant that the in-processing client
+adds. The constant is the same for every entry, so it never changes a decision.
+Records: `results/equivalence/fedfact_post_l1_sweep.json`; the In record notes the re-check.
+
 ## Reproduced from the (pre-existing, informative-only) audit
 * Adult: 29 exact duplicate rows -- reproduced exactly.
 * CaC: 98 feature columns after drops -- reproduced exactly.

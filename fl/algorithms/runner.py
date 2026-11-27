@@ -13,6 +13,14 @@ from fl.algorithms import REGISTRY
 from fl.metrics import compute_metrics
 
 
+def _proba(ad, split: dict):
+    """Algorithms whose decision rule needs the sensitive attribute (FedFACT-Post) declare
+    `needs_a = True` and get it passed; every other algorithm is called exactly as before."""
+    if getattr(ad, "needs_a", False):
+        return ad.proba(split["X"], split["a"])
+    return ad.proba(split["X"])
+
+
 def run_from_scratch(algo: str, clients: list[dict], val: dict, test: dict, seed: int, cfg: dict) -> dict:
     cls = REGISTRY[algo]
     ad = cls(clients, val, seed, cfg)
@@ -20,7 +28,7 @@ def run_from_scratch(algo: str, clients: list[dict], val: dict, test: dict, seed
     best = dict(acc=-1.0, rnd=0, state=None)
 
     def hook(r: int) -> None:
-        p = (ad.proba(val["X"]) > 0.5).astype(int)
+        p = (_proba(ad, val) > 0.5).astype(int)
         m = compute_metrics(val["y"], p, val["a"])
         m["round"] = r
         val_hist.append({k: m[k] for k in ("round", "accuracy", "balanced_accuracy", "sp_abs", "eo", "positive_rate_pred")})
@@ -38,12 +46,12 @@ def run_from_scratch(algo: str, clients: list[dict], val: dict, test: dict, seed
     results, preds = {}, {}
     for name, (st, rnd) in states.items():
         ad.set_state(st)
-        pr = ad.proba(test["X"])
+        pr = _proba(ad, test)
         yhat = (pr > 0.5).astype(int)
         valid = bool(np.isfinite(pr).all() and set(np.unique(yhat)) <= {0, 1})
         m = compute_metrics(test["y"], yhat, test["a"])
         m.update(round=rnd, valid_predictions=valid, n_unique_pred=int(len(np.unique(yhat))))
-        pv = (ad.proba(val["X"]) > 0.5).astype(int)
+        pv = (_proba(ad, val) > 0.5).astype(int)
         m["val_accuracy_of_this_model"] = compute_metrics(val["y"], pv, val["a"])["accuracy"]
         results[name] = m
         preds[name] = yhat.astype(np.int8)
